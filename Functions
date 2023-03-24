@@ -1,0 +1,163 @@
+afinn.cut<-function(out){
+########################################################################################################################################
+#Information
+#This function converts the overall AFINN scores per Tweet into one of five category levels
+########################################################################################################################################
+#Arguments
+#"out" the aggregated sentiment score using the AFINN lexicon
+########################################################################################################################################
+#Value
+#"new.col" categorised AFINN sentiment score per Tweet
+########################################################################################################################################
+#Numeric AFINN sentiment score per Tweet
+out <- as.numeric(out)
+#Creating an empty character object
+new.col <- character(length(out))
+#Categorising the numeric score
+new.col[out<= -3] <- "[-5;-3]"
+new.col[out > -3 & out <= -1] <- "(-3;-1]"
+new.col[out == 0] <- "0"
+new.col[out >= 1 & out < 4] <- "[1;3)"
+new.col[out >= 3 & out <= 5] <- "[3;5]"
+#Output
+new.col
+}
+
+afinn.sc<-function(textdat){
+  ###THIS FUNCTION PERFORMS SENTIMENT CLASSIFICATION FOR TWEETS OBTAINED USING TWITTER API AND PROVIDES AS OUTPUT AN OVERALL SENTIMENT SCORE PER TWEET
+  #Pre-processing
+  textdat<-iconv(textdat,'UTF-8','ASCII')
+  #Tokenisation
+  tokens<-data_frame(text = textdat) %>% unnest_tokens(word,text)
+  #Sentiment classification
+  senti.tab<-tokens %>% inner_join(L_A) %>% count(value)
+  #return(senti.tab)
+  #Overall sentiment score
+  afinn.score<-round((sum(senti.tab$value*senti.tab$n))/sum(senti.tab$n),0)
+  #return(textdat)
+  #Sentiment words in text
+  word.vec<-tokens %>% inner_join(L_A) %>% count(word)
+  word.vec<-word.vec[,1]
+  nw<-nrow(word.vec)
+  #return(nw)
+  #word.vec<-paste(word.vec$word,sep = "",collapse = "")
+  word.vec<-paste(word.vec$word,sep = "_",collapse = "_")
+  #Output
+  list("Text" = textdat,"Sentiment_words" = word.vec,"AFINN_Score" = afinn.score,"NumWords" = nw,"SentTab" = senti.tab)
+}
+
+bing.sc<-function(textdat){
+  ###THIS FUNCTION PERFORMS SENTIMENT CLASSIFICATION FOR TWEETS OBTAINED USING TWITTER API AND PROVIDES AS OUTPUT AN OVERALL SENTIMENT SCORE PER TWEET
+  #Pre-processing
+  textdat<-iconv(textdat,'UTF-8','ASCII')
+  #Tokenisation
+  tokens<-data_frame(text = textdat) %>% unnest_tokens(word,text)
+  #Sentiment classification
+  senti.tab<-tokens %>% inner_join(L_B) %>% count(sentiment)
+  ns<-nrow(senti.tab)
+  sB<-ifelse(test = ns==1,yes = senti.tab$sentiment,no = ifelse(test = ns>1&&senti.tab$n[senti.tab$sentiment=="positive"]==senti.tab$n[senti.tab$sentiment=="negative"],yes = "neutral",no = ifelse(test = ns>1&&senti.tab$n[senti.tab$sentiment=="positive"]>senti.tab$n[senti.tab$sentiment=="negative"],yes = "positive",no = ifelse(test = ns>1&&senti.tab$n[senti.tab$sentiment=="positive"]<senti.tab$n[senti.tab$sentiment=="negative"],yes = "negative",no = NA))))
+  list("score" = sB, "senti.tab" = senti.tab)
+}
+
+biplFig <- function (CLPs, Zs, Lvls=NULL, Z.col="grey37", CLP.col="forestgreen", Z.pch=1, CLP.pch=17,title="", Z.cex=1,CLP.cex=1.7,
+                     exp.factor = 0.2) 
+{
+  ###################################################################################
+  ###################################################################################
+  #Information
+  #This function constructs a biplot after MCA
+  ###################################################################################
+  #Arguments
+  #"CLPs" category level points (standard coordinates for variables)
+  #"Zs" sample principal coordinates
+  #"Lvls" names of the CLPs
+  #"Z.col", "CLP.col" are the colour specifications for samples and CLPs
+  #"Z.pch", "CLP.pch" are the plotting character specifications for samples and CLPs
+  #"title" title of the figure
+  ###################################################################################
+  #Value
+  #Returns a biplot.
+  ###################################################################################
+  ###################################################################################
+  #dev.new()
+  #usr <- par("usr")
+  #clip(usr[1], -2, usr[3], usr[4])
+  #clip(2, usr[2], usr[3], usr[4])
+  par(pty="s")
+  temp <<- rbind(CLPs[,1:2],Zs[,1:2])
+  rangex <<- range(temp[,1])
+  rangey <<- range(temp[,2])
+  xminmax <<- c(rangex[1]-exp.factor*(rangex[2]-rangex[1]), rangex[2]+exp.factor*(rangex[2]-rangex[1]))
+  yminmax <<- c(rangey[1]-exp.factor*(rangey[2]-rangey[1]), rangey[2]+exp.factor*(rangey[2]-rangey[1]))
+  plot(x = xminmax, y = yminmax, xlim = xminmax, 
+       ylim = yminmax, xaxt = "n", 
+       yaxt = "n", xlab = "", ylab = "", type = "n", xaxs = "i", 
+       yaxs = "i",  main=title)
+  #plot(rbind(CLPs[,1:2],Zs[,1:2]),pch="",xaxt="n",yaxt="n",xlab="",ylab="",main=title)
+  points(Zs,pch=Z.pch,col=Z.col,cex=Z.cex)
+  points(CLPs,pch=CLP.pch,col=CLP.col,cex=CLP.cex)
+  
+  is.null(Lvls)
+  {
+    text(CLPs,cex=0.7,label=rownames(CLPs),pos=3,xpd=NA)
+  }
+  !is.null(Lvls)
+  {
+    text(CLPs,cex=0.7,label=Lvls,pos=3,xpd=NA)
+  }
+}
+
+wordcloud_sc<-function(textx,keyword){
+  library(tidyverse)
+  library(tidytext)
+  library(tm)
+  library(wordcloud)
+  library(expss)
+  textx<-as.matrix(textx)
+  textx<-iconv(textx,'UTF-8','ASCII')
+  #Creating a corpus based on all words in the text
+  corp<-Corpus(x = VectorSource(x = textx))
+  #Creating term document matrix
+  tdm.x<-TermDocumentMatrix(x = corp, control = list(removePunctuation = TRUE,stopwords = c(keyword,"@","http",stopwords("english"),"https"),removeNumbers = TRUE,tolower = TRUE))
+  tdm.x<-as.matrix(tdm.x)
+  #Colors
+  lexicon.afinn<-get_sentiments(lexicon = 'afinn')
+  lexicon.afinn$col<-ifelse(test = lexicon.afinn$value>0,yes = "green",no = ifelse(test = lexicon.afinn$value<0,yes = "red",no = "black"))
+  #Wordcloud with all words
+  word.freq <- sort(rowSums(tdm.x),decreasing = TRUE)
+  dm.x <- data.frame(word = names(word.freq),freq = word.freq)
+  tokens.dm<-data_frame(text = dm.x$word) %>% unnest_tokens(word,text)
+  full.set<-tokens.dm %>% full_join(lexicon.afinn)
+  #full.set$freq<-vlookup(lookup_value = full.set$word,dict = dm.x,result_column = 2,lookup_column = 1)
+  full.set$col<-rep(0,nrow(full.set))
+  #fsc.1<-NULL
+  na.ind<-which(is.na(full.set$value))
+  pos.ind<-which(full.set$value>0)
+  neg.ind<-which(full.set$value<0)
+  neu.ind<-which(full.set$value==0)
+  full.set$col[na.ind]<-"gray60"
+    full.set$col[pos.ind]<-"green"
+      full.set$col[neg.ind]<-"red"
+        full.set$col[neu.ind]<-"black"
+          #return(full.set)
+        rescol<-which(colnames(full.set)=="col")
+        lookcol<-which(colnames(full.set)=="word")
+        dm.x$col<-vlookup(lookup_value = dm.x$word,dict = full.set,result_column = rescol,lookup_column = lookcol)
+        windows()
+        wordcloud(words = dm.x$word,freq = dm.x$freq,random.order = FALSE, colors = "black")
+        windows()
+        wordcloud(words = dm.x$word,freq = dm.x$freq,random.order = FALSE,ordered.colors = TRUE,colors = dm.x$col)
+        #Wordcloud with sentiment words only 
+        tokens<-data_frame(text = textx) %>% unnest_tokens(word,text)
+        words.count<-tokens %>% inner_join(lexicon.afinn) %>% count(word)
+        words.count<-words.count[order(words.count$n,decreasing = TRUE),]
+        words.col<-words.count %>% inner_join(lexicon.afinn)
+        windows()
+        wordcloud(words = words.count$word,freq = words.count$n,random.order = F,random.color = F,ordered.colors = TRUE,colors = words.col$col)
+        #Frequencies of words and colours
+        freq.col.<-table(dm.x$col)
+        total<-sum(freq.col.)
+        freq.col.perc<-round((freq.col./total)*100,4)
+        #Output
+        #list("colourtab" = freq.col.perc, "TDM" = dm.x)
+}
