@@ -1,0 +1,133 @@
+##Connection to Twitter and obtaining Tweets
+#Tweets for a limited time period are obtained. When interested in obtaining
+#Tweets over a longer period of time, the process should be repeated manually 
+#the time period. 
+#keys, tokens and secrets are generated per project after creating a developer 
+#account on Twitter
+#consumer key and secret can also be referred to as API key and secret under Consumer Keys
+#access token and secret can be found under Authentication Tokens
+
+#setup_twitter_oauth(consumer_key = "API Key",consumer_secret = "API Secret",access_token = "Acess Token",access_secret = "Access Secret")
+
+#Tweets are obtained for six locations: Cape Town, Durban, Johannesburg, South Africa, Australia and United Kingdom
+#only Cape Town and South Africa will be shown here
+
+#covid_ct <- searchTwitter(searchString = "covid", n = 1000,geocode = "-33.9082139,18.4039413,50mi")
+#covid_rsa_1<-searchTwitter(searchString = "covid",n = 1000,lang = "en",geocode = "-28.5975766,24.6445757,100mi")
+#covid_rsa_2<-searchTwitter(searchString = "covid",n = 1000,lang = "en",geocode = "-28.5975766,24.6445757,100mi")
+#covid_rsa_3<-searchTwitter(searchString = "covid",n = 1000,lang = "en",geocode = "-28.5975766,24.6445757,100mi")
+#covid_rsa_4<-searchTwitter(searchString = "covid",n = 1000,lang = "en",geocode = "-28.5975766,24.6445757,100mi")
+#covid_rsa<-c(covid_rsa_1,covid_rsa_2,covid_rsa_3,covid_rsa_4)
+
+##Creating multivariate datasets
+#only dataset creation for SA Cities will be shown here
+#CT.tweets<-sapply(X = covid_ct,FUN = function(x) x$getText())
+#CT.dat<-data.frame("Tweet" = CT.tweets,"City" = rep("CT",1000))
+#DBN.tweets<-sapply(X = covid_durb,FUN = function(x) x$getText())
+#DBN.dat<-data.frame("Tweet" = DBN.tweets,"City" = rep("DBN",1000))
+#JHB.tweets<-sapply(X = covid_jhb,FUN = function(x) x$getText())
+#JHB.dat<-data.frame("Tweet" = JHB.tweets,"City" = rep("JHB",1000))
+#Cities<-rbind(CT.dat,DBN.dat,JHB.dat)
+#Cities.list<-c(covid_ct,covid_durb,covid_jhb)
+
+#depending on computer capacity, should take long to run, use given datasets instead
+
+L_A<-get_sentiments(lexicon = "afinn")
+L_B<-get_sentiments(lexicon = "bing")
+
+#words.cities<-NULL
+#afscore.cities<-NULL
+#bingscore.cities<-NULL
+#nw.cities<-NULL
+#for(i in 1:nrow(Cities)){
+  #words.cities[i]<-afinn.sc(textdat = Cities[i,1]$Sentiment_words
+  #afscore.cities[i]<-afinn.sc(textdat = Cities[i,1]$AFINN_Score
+  #bingscore.cities[i]<-bing.sc(textdat = Cities[i,1]$score
+  #nw.cities[i]<-afinn.sc(textdat = Cities[i,1])$NumWords
+#}
+
+#extracting classifiable words per Tweet
+#Cities$Words<-words.cities
+#AFINN sentiment score per Tweet
+#Cities$AFScore<-afscore.cities
+#Bing sentiment category per Tweet
+#Cities$BingScore<-bingscore.cities
+#number of classifiable words per Tweet
+#Cities$NumWords<-nw.cities
+#AFINN sentiment categories per Tweet
+#Cities$AFINNcats<-afinn.cut(out = Cities$AFScore)
+
+#removing incomplete observations that either could not be classified 
+#or were not classified using both sentiment lexicons
+#index.comp<-1:nrow(Cities)
+#index.comp<-index.comp[complete.cases(Cities)]
+#Cities<-Cities[index.comp,]
+
+##Wordclouds
+#the output for each call of this function will result in three separate wordclouds
+wordcloud_sc(textx = covid_ct,keyword = "covid")
+#wordcloud_sc(textx = covid_durb,keyword = "covid")
+#wordcloud_sc(textx = covid_jhb,keyword = "covid")
+#wordcloud_sc(textx = covid_rsa,keyword = "covid")
+#wordcloud_sc(textx = covid_aus,keyword = "covid")
+#wordcloud_sc(textx = covid_uk,keyword = "covid")
+windows()
+##MCA biplots 
+#a MCA dataset is created with only the four categorical variables
+mca.dat.cities<-Cities[,c(2,5,6,7)]
+mca.cities<-mjca(obj = mca.dat.cities)
+biplFig(CLPs=mca.cities$colcoord,Zs=mca.cities$rowpcoord,Lvls = mca.cities$levelnames,CLP.cex=2,Z.col = "gray60",Z.pch = 20,Z.cex = 1.5,CLP.col = "blue",CLP.pch = c(9,9,9,16,15,17,25,8,8,8,8,16,16,17,17,15))
+
+##Embedded word MCA biplots
+#subsets of Tweets per level of NumWords
+NW1<-which(Cities$NumWords==1)
+NW2<-which(Cities$NumWords==2)
+NW3<-which(Cities$NumWords==3)
+NW4<-which(Cities$NumWords==4)
+NW5<-which(Cities$NumWords==5)
+#colours for each level of NumWords
+colors.nw<-brewer.pal(n = 5,name = "Set2")
+#full embedded word MCA biplot
+windows()
+word.plot <- as.data.frame(rbind(mca.cities$rowpcoord[,1:2],mca.cities$colcoord[,1:2]))
+lab1 <- Cities$Words
+lab2 <- mca.cities$levelnames
+lab2[7:11]<-""
+p <- ggplot(data = word.plot[1:334,], mapping = aes(word.plot[1:334,1],word.plot[1:334,2])) +
+  geom_point(color = "red") + geom_text_repel(mapping = aes(color = as.factor(Cities$NumWords)),max.overlaps=300,label = lab1) + geom_text(data = word.plot[335:350,],mapping = aes(word.plot[335:350,1],word.plot[335:350,2],label = lab2, fontface = 2),color = "blue")+labs(x = "Dimension 1", y = "Dimension 2") + theme_bw()+ theme(aspect.ratio=1,legend.position = "bottom")+scale_color_brewer(name = "Number of words",palette = "Set2",direction = 1)+scale_x_continuous(limits = c(-2.5,2.5))+scale_y_continuous(limits = c(-3.5,3.5))+theme(axis.text = element_blank(),panel.grid = element_blank(),axis.ticks = element_blank())
+p
+windows()
+#embedded word MCA biplot for NumWords=1
+word.plot.1 <- as.data.frame(rbind(mca.cities$rowpcoord[NW1,1:2],mca.cities$colcoord[,1:2]))
+lab1 <- Cities$Words[Cities$NumWords==1]
+lab2 <- mca.cities$levelnames
+lab2[7:11]<-""
+p.1 <- ggplot(data = word.plot.1[1:198,], mapping = aes(word.plot.1[1:198,1],word.plot.1[1:198,2])) +geom_point(color = "red") + geom_text_repel(max.overlaps=300,label = lab1,color = colors.nw[1]) + geom_text(data = word.plot.1[199:214,],mapping = aes(word.plot.1[199:214,1],word.plot.1[199:214,2],label = lab2, fontface = 2),color = "blue")+labs(x = "Dimension 1", y = "Dimension 2") + theme_bw()+theme(aspect.ratio = 1)+scale_x_continuous(limits = c(-2.5,2.5))+scale_y_continuous(limits = c(-3.5,3.5))+theme(axis.text = element_blank(),panel.grid = element_blank(),axis.ticks = element_blank())
+p.1
+windows()
+#embedded word MCA biplot for NumWords=2
+word.plot.2 <- as.data.frame(rbind(mca.cities$rowpcoord[NW2,1:2],mca.cities$colcoord[,1:2]))
+lab1 <- Cities$Words[Cities$NumWords==2]
+lab2 <- mca.cities$levelnames
+lab2[7:11]<-""
+p.2 <- ggplot(data = word.plot.2[1:95,], mapping = aes(word.plot.2[1:95,1],word.plot.2[1:95,2])) +geom_point(color = "red") + geom_text_repel(max.overlaps=300,label = lab1,color = colors.nw[2]) + geom_text(data = word.plot.2[96:111,],mapping = aes(word.plot.2[96:111,1],word.plot.2[96:111,2],label = lab2, fontface = 2),color = "blue")+labs(x = "Dimension 1", y = "Dimension 2") + theme_bw()+ theme(aspect.ratio=1)+scale_x_continuous(limits = c(-2.5,2.5))+scale_y_continuous(limits = c(-3.5,3.5))+theme(axis.text = element_blank(),panel.grid = element_blank(),axis.ticks = element_blank())
+p.2
+windows()
+#embedded word MCA biplot for NumWords=3
+word.plot.3 <- as.data.frame(rbind(mca.cities$rowpcoord[NW3,1:2],mca.cities$colcoord[,1:2]))
+lab1 <- Cities$Words[Cities$NumWords==3]
+lab2 <- mca.cities$levelnames
+lab2[7:11]<-""
+p.3 <- ggplot(data = word.plot.3[1:35,], mapping = aes(word.plot.3[1:35,1],word.plot.3[1:35,2])) +geom_point(color = "red") + geom_text_repel(max.overlaps=300,label = lab1,color = colors.nw[3]) + geom_text(data = word.plot.3[36:51,],mapping = aes(word.plot.3[36:51,1],word.plot.3[36:51,2],label = lab2, fontface = 2),color = "blue")+labs(x = "Dimension 1", y = "Dimension 2") + theme_bw()+ theme(aspect.ratio=1)+scale_x_continuous(limits = c(-2.5,2.5))+scale_y_continuous(limits = c(-3.5,3.5))+theme(axis.text = element_blank(),panel.grid = element_blank(),axis.ticks = element_blank())
+p.3
+windows()
+#embedded word MCA biplot for NumWords=4 and NumWords=5
+word.plot.4 <- as.data.frame(rbind(mca.cities$rowpcoord[NW4,1:2],mca.cities$colcoord[,1:2]))
+word.plot.5 <- as.data.frame(rbind(mca.cities$rowpcoord[NW5,1:2],mca.cities$colcoord[,1:2]))
+lab1_1 <- Cities$Words[Cities$NumWords==4]
+lab1_2 <- Cities$Words[Cities$NumWords==5]
+lab2 <- mca.cities$levelnames
+lab2[7:11]<-""
+p.4 <- ggplot(data = word.plot.4[1:4,], mapping = aes(word.plot.4[1:4,1],word.plot.4[1:4,2])) +
+  geom_point(color = "red") + geom_text_repel(max.overlaps=300,label = lab1_1,color = colors.nw[4])+geom_point(data = word.plot.5[1:2,], mapping = aes(x = word.plot.5[1:2,1],y = word.plot.5[1:2,2]),color = "red") + geom_text_repel(data = word.plot.5[1:2,], mapping = aes(x = word.plot.5[1:2,1],y = word.plot.5[1:2,2]),max.overlaps=300,label = lab1_2,color = colors.nw[5])+geom_text(data = word.plot.4[5:20,],mapping = aes(word.plot.4[5:20,1],word.plot.4[5:20,2],label = lab2, fontface = 2),color = "blue")+labs(x = "Dimension 1", y = "Dimension 2") + theme_bw()+ theme(aspect.ratio=1)+scale_x_continuous(limits = c(-2.5,2.5))+scale_y_continuous(limits = c(-3.5,3.5))+theme(axis.text = element_blank(),panel.grid = element_blank(),axis.ticks = element_blank())
+p.4
