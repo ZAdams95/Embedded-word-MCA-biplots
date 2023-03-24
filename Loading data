@@ -1,0 +1,9 @@
+#Two multivariate data sets and six list objects (.txt) are included as supplementary material. Import using appropriate paths: 
+Cities<-read.table(file = "/Cities.txt") #Full multivariate data set of Tweets obtained for three South African cities
+Countries<-read.table(file = "/Countries.txt") #Full multivariate data set of Tweets obtained for three countries
+covid_ct<-read.table(file = "/covid_ct.txt") #List of 1000 obtained Tweets from Cape Town
+covid_durb<-read.table(file = "/covid_durb.txt") #List of 1000 obtained Tweets from Durban
+covid_jhb<-read.table(file = "/covid_jhb.txt") #List of 1000 obtained Tweets from Johannesburg
+covid_rsa<-read.table(file = "/covid_rsa.txt") #List of 4000 obtained Tweets from South Africa
+covid_aus<-read.table(file = "/covid_aus.txt") #List of 4000 obtained Tweets from Australia
+covid_uk<-read.table<-read.table(file = "/covid_uk.txt") #List of 4000 obtained Tweets from United Kingdom
