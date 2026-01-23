@@ -1,4 +1,4 @@
-library(twitteR)
+library(twitteR) #This package has been removed from CRAN in 2025 (https://cran.r-project.org/web/packages/twitteR/index.html)
 library(tidyverse)
 library(tidytext)
 library(ggplot2)
